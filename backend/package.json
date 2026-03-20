@@ -1,0 +1,14 @@
+{
+  "name": "sdn-flow-backend",
+  "version": "1.0.0",
+  "description": "Backend",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "Artem Pliusnin",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
