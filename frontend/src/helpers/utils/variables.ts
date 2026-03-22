@@ -1,0 +1,1 @@
+export const FETCHING_INTERVAL = 5000;
