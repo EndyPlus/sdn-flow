@@ -2,6 +2,7 @@ import "@xyflow/react/dist/style.css";
 import { ReactFlow, Background, Controls } from "@xyflow/react";
 import { useNetwork } from "../../logic/hooks/useNetwork";
 import { useNetworkData } from "../../logic/hooks/useNetworkData";
+import { NetworkError } from "../ui/NetworkError";
 
 export const NetworkCanvas = () => {
   const {
@@ -13,7 +14,11 @@ export const NetworkCanvas = () => {
     defaultEdgeOptions,
   } = useNetwork();
 
-  useNetworkData();
+  const { isError } = useNetworkData();
+
+  if (isError) {
+    return <NetworkError />;
+  }
 
   return (
     <div className="h-full w-full flex-1 bg-slate-950">
@@ -25,7 +30,7 @@ export const NetworkCanvas = () => {
         onPaneClick={onPaneClick}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.3 }}
         minZoom={0.5}
         maxZoom={1}
       >

@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchTopology } from "../../services/networkAction";
 import { useNetworkStore } from "../stores/useNetworkStore";
 import { FETCHING_INTERVAL } from "../../helpers/utils/variables";
 
 export const useNetworkData = () => {
+  const [isError, setIsError] = useState(true);
+
   const updateNodesAndEdges = useNetworkStore(
     (state) => state.updateNodesAndEdges,
   );
@@ -14,7 +16,11 @@ export const useNetworkData = () => {
       try {
         const data = await fetchTopology();
         updateNodesAndEdges(data.nodes, data.edges);
+        if (isError) {
+          setIsError(false);
+        }
       } catch (error) {
+        setIsError(true);
         console.error("Failed to fetch topology:", error);
       }
     };
@@ -28,5 +34,7 @@ export const useNetworkData = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [updateNodesAndEdges]);
+  }, [updateNodesAndEdges, isError]);
+
+  return { isError };
 };
