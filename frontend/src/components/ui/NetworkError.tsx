@@ -2,7 +2,9 @@ import { WifiOff } from "lucide-react";
 
 export const NetworkError = () => {
   return (
+    // container
     <div className="flex h-full w-full flex-1 items-center justify-center bg-slate-950">
+      // error window
       <div className="flex flex-col items-center gap-4 rounded-xl border border-slate-800 bg-slate-900 px-10 py-8 shadow-lg">
         <div className="rounded-full bg-red-950 p-4">
           <WifiOff className="h-8 w-8 text-red-400" />

@@ -2,9 +2,9 @@ import { useNetworkStore } from "../stores/useNetworkStore";
 import type { Node, NodeMouseHandler, NodeTypes } from "@xyflow/react";
 import type { NetworkNodeData } from "../../helpers/types/types";
 import { useCallback, useMemo } from "react";
-import { ServerNode } from "../../components/ui/nodes/ServerNode";
-import { SwitchNode } from "../../components/ui/nodes/SwitchNode";
-import { IndustrialNode } from "../../components/ui/nodes/IndustrialNode";
+import { ServerNode } from "../../components/ui/nodes/variants/ServerNode";
+import { SwitchNode } from "../../components/ui/nodes/variants/SwitchNode";
+import { IndustrialNode } from "../../components/ui/nodes/variants/IndustrialNode";
 import { useShallow } from "zustand/shallow";
 
 export const useNetwork = () => {
@@ -28,15 +28,6 @@ export const useNetwork = () => {
     setSelectedNode(null);
   }, [setSelectedNode]);
 
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      server: ServerNode,
-      switch: SwitchNode,
-      industrial: IndustrialNode,
-    }),
-    [],
-  );
-
   const onNodeClick = useCallback<NodeMouseHandler<Node<NetworkNodeData>>>(
     (_event, node) => {
       selectNode(node);
@@ -47,6 +38,15 @@ export const useNetwork = () => {
   const onPaneClick = useCallback(() => {
     clearSelection();
   }, [clearSelection]);
+
+  const nodeTypes: NodeTypes = useMemo(
+    () => ({
+      server: ServerNode,
+      switch: SwitchNode,
+      industrial: IndustrialNode,
+    }),
+    [],
+  );
 
   const defaultEdgeOptions = useMemo(
     () => ({
@@ -60,7 +60,6 @@ export const useNetwork = () => {
     nodes,
     edges,
     selectedNode,
-    selectNode,
     clearSelection,
     nodeTypes,
     onNodeClick,

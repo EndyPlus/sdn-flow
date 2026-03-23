@@ -16,7 +16,7 @@ const networkData = {
         latency: 5,
         uptime: 720,
       },
-      position: { x: 600, y: 0 },
+      position: { x: 700, y: 50 },
     },
     {
       id: "node-2",
@@ -28,7 +28,7 @@ const networkData = {
         latency: 12,
         uptime: 680,
       },
-      position: { x: 250, y: 300 },
+      position: { x: 200, y: 250 },
     },
     {
       id: "node-3",
@@ -40,7 +40,7 @@ const networkData = {
         latency: 15,
         uptime: 650,
       },
-      position: { x: 950, y: 300 },
+      position: { x: 1200, y: 250 },
     },
     {
       id: "node-4",
@@ -53,7 +53,7 @@ const networkData = {
         latency: 18,
         uptime: 120,
       },
-      position: { x: 50, y: 600 },
+      position: { x: -100, y: 600 },
     },
     {
       id: "node-5",
@@ -66,7 +66,7 @@ const networkData = {
         latency: 25,
         uptime: 96,
       },
-      position: { x: 450, y: 600 },
+      position: { x: 500, y: 600 },
     },
     {
       id: "node-6",
@@ -79,7 +79,7 @@ const networkData = {
         latency: 20,
         uptime: 200,
       },
-      position: { x: 750, y: 600 },
+      position: { x: 900, y: 600 },
     },
     {
       id: "node-7",
@@ -92,7 +92,7 @@ const networkData = {
         latency: 0,
         uptime: 0,
       },
-      position: { x: 1150, y: 600 },
+      position: { x: 1500, y: 600 },
     },
     {
       id: "node-8",
@@ -104,7 +104,7 @@ const networkData = {
         latency: 8,
         uptime: 500,
       },
-      position: { x: 600, y: 750 },
+      position: { x: 700, y: 900 },
     },
   ],
   edges: [

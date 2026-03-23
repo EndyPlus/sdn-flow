@@ -1,11 +1,9 @@
 import axios from "axios";
-import type { TopologyResponse } from "../helpers/types/types";
+import type { NodesEdges } from "../helpers/types/types";
 
 const API_BASE_URL = "http://localhost:3001/api";
 
-export const fetchTopology = async (): Promise<TopologyResponse> => {
-  const response = await axios.get<TopologyResponse>(
-    `${API_BASE_URL}/topology`,
-  );
+export const fetchTopology = async (): Promise<NodesEdges> => {
+  const response = await axios.get<NodesEdges>(`${API_BASE_URL}/topology`);
   return response.data;
 };

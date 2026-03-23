@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Backend",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
   "keywords": [],
   "author": "Artem Pliusnin",
   "license": "ISC",

@@ -1,26 +1,24 @@
-import { X, Server, Network, Cpu, Clock, Gauge, Wifi } from "lucide-react";
-import { useNetwork } from "../../logic/hooks/useNetwork";
+import { X, Clock, Gauge, Wifi } from "lucide-react";
+import { useNodeInspector } from "../../logic/hooks/useNodeInspector";
+import type { NodeInspectorProps } from "../../helpers/types/types";
 
-export const NodeInspector = () => {
-  const { selectedNode, clearSelection } = useNetwork();
-
-  if (!selectedNode) return null;
-
-  const data = selectedNode.data;
-  const nodeTypeIcons = {
-    server: Server,
-    switch: Network,
-    industrial: Cpu,
-  };
-
-  const Icon =
-    nodeTypeIcons[selectedNode.type as keyof typeof nodeTypeIcons] || Server;
-
-  const statusColors = {
-    online: "text-green-400 bg-green-950 border-green-500",
-    offline: "text-red-400 bg-red-950 border-red-500",
-    warning: "text-yellow-400 bg-yellow-950 border-yellow-500",
-  };
+export const NodeInspector = ({
+  selectedNode,
+  clearSelection,
+}: NodeInspectorProps) => {
+  const {
+    nodeId,
+    nodePosition,
+    nodeType,
+    nodeDataLabel,
+    nodeDataStatus,
+    nodeDataIp,
+    nodeDataLoad,
+    nodeDataLatency,
+    nodeDataUptime,
+    Icon,
+    inspectorStatusColor,
+  } = useNodeInspector(selectedNode);
 
   return (
     <aside className="absolute top-0 right-0 z-10 h-full w-96 border-l border-slate-800 bg-slate-900 shadow-2xl">
@@ -37,14 +35,12 @@ export const NodeInspector = () => {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6 flex items-center gap-4 rounded-lg bg-slate-800 p-4">
-            <div className={`rounded-lg p-3 ${statusColors[data.status]}`}>
+            <div className={`rounded-lg p-3 ${inspectorStatusColor}`}>
               <Icon className="h-8 w-8" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white">{data.label}</h3>
-              <p className="text-sm text-slate-400 capitalize">
-                {selectedNode.type}
-              </p>
+              <h3 className="text-xl font-bold text-white">{nodeDataLabel}</h3>
+              <p className="text-sm text-slate-400 capitalize">{nodeType}</p>
             </div>
           </div>
 
@@ -53,9 +49,9 @@ export const NodeInspector = () => {
               <div className="mb-2 flex items-center gap-2">
                 <div
                   className={`h-3 w-3 rounded-full ${
-                    data.status === "online"
+                    nodeDataStatus === "online"
                       ? "animate-pulse bg-green-500"
-                      : data.status === "offline"
+                      : nodeDataStatus === "offline"
                         ? "bg-red-500"
                         : "animate-pulse bg-yellow-500"
                   }`}
@@ -66,14 +62,14 @@ export const NodeInspector = () => {
               </div>
               <p
                 className={`text-lg font-bold capitalize ${
-                  data.status === "online"
+                  nodeDataStatus === "online"
                     ? "text-green-400"
-                    : data.status === "offline"
+                    : nodeDataStatus === "offline"
                       ? "text-red-400"
                       : "text-yellow-400"
                 }`}
               >
-                {data.status}
+                {nodeDataStatus}
               </p>
             </div>
 
@@ -83,10 +79,10 @@ export const NodeInspector = () => {
                   Node ID
                 </span>
               </div>
-              <p className="font-mono text-sm text-white">{selectedNode.id}</p>
+              <p className="font-mono text-sm text-white">{nodeId}</p>
             </div>
 
-            {data.ip && (
+            {nodeDataIp && (
               <div className="rounded-lg bg-slate-800 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Wifi className="h-4 w-4 text-slate-400" />
@@ -95,12 +91,12 @@ export const NodeInspector = () => {
                   </span>
                 </div>
                 <p className="font-mono text-lg font-bold text-white">
-                  {data.ip}
+                  {nodeDataIp}
                 </p>
               </div>
             )}
 
-            {data.load !== undefined && (
+            {nodeDataLoad !== undefined && (
               <div className="rounded-lg bg-slate-800 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Gauge className="h-4 w-4 text-slate-400" />
@@ -109,24 +105,26 @@ export const NodeInspector = () => {
                   </span>
                 </div>
                 <div className="flex items-end gap-2">
-                  <p className="text-2xl font-bold text-white">{data.load}%</p>
+                  <p className="text-2xl font-bold text-white">
+                    {nodeDataLoad}%
+                  </p>
                   <div className="mb-1 h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
                     <div
                       className={`h-full transition-all ${
-                        data.load > 80
+                        nodeDataLoad > 80
                           ? "bg-red-500"
-                          : data.load > 60
+                          : nodeDataLoad > 60
                             ? "bg-yellow-500"
                             : "bg-green-500"
                       }`}
-                      style={{ width: `${data.load}%` }}
+                      style={{ width: `${nodeDataLoad}%` }}
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {data.latency !== undefined && (
+            {nodeDataLatency !== undefined && (
               <div className="rounded-lg bg-slate-800 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-slate-400" />
@@ -135,12 +133,12 @@ export const NodeInspector = () => {
                   </span>
                 </div>
                 <p className="text-lg font-bold text-white">
-                  {data.latency} ms
+                  {nodeDataLatency} ms
                 </p>
               </div>
             )}
 
-            {data.uptime !== undefined && (
+            {nodeDataUptime !== undefined && (
               <div className="rounded-lg bg-slate-800 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-slate-400" />
@@ -149,7 +147,7 @@ export const NodeInspector = () => {
                   </span>
                 </div>
                 <p className="text-lg font-bold text-white">
-                  {data.uptime} hours
+                  {nodeDataUptime} hours
                 </p>
               </div>
             )}
@@ -161,8 +159,7 @@ export const NodeInspector = () => {
                 </span>
               </div>
               <p className="font-mono text-sm text-white">
-                X: {Math.round(selectedNode.position.x)}, Y:{" "}
-                {Math.round(selectedNode.position.y)}
+                X: {Math.round(nodePosition.x)}, Y: {Math.round(nodePosition.y)}
               </p>
             </div>
           </div>

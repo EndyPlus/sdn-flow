@@ -35,7 +35,7 @@ export const NetworkCanvas = () => {
         maxZoom={1}
       >
         <Background color="#334155" gap={16} size={1} />
-        <Controls className="shadow-sm" />
+        <Controls />
       </ReactFlow>
     </div>
   );

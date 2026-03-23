@@ -1,48 +1,51 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
 
+export type Status = "online" | "offline" | "warning";
+export type Variant = "default" | "success" | "danger";
+
 export interface NetworkNodeData extends Record<string, unknown> {
   label: string;
-  status: "online" | "offline" | "warning";
+  status: Status;
   ip?: string;
   load?: number;
   latency?: number;
   uptime?: number;
 }
 
-export interface NetworkState {
+export interface NodesEdges {
   nodes: Node<NetworkNodeData>[];
   edges: Edge[];
+}
+
+export interface NetworkState extends NodesEdges {
   selectedNode: Node<NetworkNodeData> | null;
-  setNodes: (nodes: Node<NetworkNodeData>[]) => void;
-  setEdges: (edges: Edge[]) => void;
   setSelectedNode: (node: Node<NetworkNodeData> | null) => void;
   updateNodesAndEdges: (nodes: Node<NetworkNodeData>[], edges: Edge[]) => void;
 }
 
-export interface TopologyResponse {
-  nodes: Node<NetworkNodeData>[];
-  edges: Edge[];
+export interface NodeInspectorProps {
+  selectedNode: Node<NetworkNodeData>;
+  clearSelection: () => void;
 }
 
-export interface NetworkNodeProps {
+interface BaseCardProps {
+  icon: LucideIcon;
   label: string;
-  status: "online" | "offline" | "warning";
+}
+
+export interface NetworkNodeProps extends BaseCardProps {
+  status: Status;
   ip?: string;
   load?: number;
   selected?: boolean;
-  icon: LucideIcon;
 }
 
-export interface StatsCardProps {
-  icon: LucideIcon;
-  label: string;
+export interface StatsCardProps extends BaseCardProps {
   value: number;
-  variant?: "default" | "success" | "danger";
+  variant?: Variant;
 }
 
-export interface StatusBadgeProps {
-  icon: LucideIcon;
-  label: string;
+export interface StatusBadgeProps extends BaseCardProps {
   count: number;
 }

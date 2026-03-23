@@ -4,7 +4,7 @@ import { useNetworkStore } from "../stores/useNetworkStore";
 import { FETCHING_INTERVAL } from "../../helpers/utils/variables";
 
 export const useNetworkData = () => {
-  const [isError, setIsError] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   const updateNodesAndEdges = useNetworkStore(
     (state) => state.updateNodesAndEdges,

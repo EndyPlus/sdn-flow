@@ -1,11 +1,11 @@
 import { NetworkCanvas } from "../features/NetworkCanvas";
-import { NodeInspector } from "../features/NodeInspector";
+import { Aside } from "./Aside";
 
 export const Main = () => {
   return (
     <main className="relative flex flex-1 overflow-hidden">
       <NetworkCanvas />
-      <NodeInspector />
+      <Aside />
     </main>
   );
 };
