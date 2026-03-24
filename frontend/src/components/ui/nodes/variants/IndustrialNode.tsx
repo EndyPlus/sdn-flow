@@ -5,17 +5,17 @@ import type { NetworkNodeData } from "../../../../helpers/types/types";
 
 export const IndustrialNode = ({
   data,
-  selected,
+  id,
 }: NodeProps<Node<NetworkNodeData>>) => {
   const { label, status, ip, load } = data;
 
   return (
     <NodeElement
+      id={id}
       label={label}
       status={status}
       ip={ip}
       load={load}
-      selected={selected}
       icon={Cpu}
     />
   );

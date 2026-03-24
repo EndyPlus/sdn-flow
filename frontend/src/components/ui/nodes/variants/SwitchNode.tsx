@@ -3,19 +3,10 @@ import { Network } from "lucide-react";
 import { NodeElement } from "../NodeElement";
 import type { NetworkNodeData } from "../../../../helpers/types/types";
 
-export const SwitchNode = ({
-  data,
-  selected,
-}: NodeProps<Node<NetworkNodeData>>) => {
+export const SwitchNode = ({ data, id }: NodeProps<Node<NetworkNodeData>>) => {
   const { label, status, ip } = data;
 
   return (
-    <NodeElement
-      label={label}
-      status={status}
-      ip={ip}
-      selected={selected}
-      icon={Network}
-    />
+    <NodeElement id={id} label={label} status={status} ip={ip} icon={Network} />
   );
 };

@@ -1,16 +1,19 @@
 import { Handle, Position } from "@xyflow/react";
 import type { NetworkNodeProps } from "../../../helpers/types/types";
-import { getNetworkNodeStyles } from "../../../helpers/utils/getNetworkNodeStyles";
+import { useNodeElement } from "../../../logic/hooks/useNodeElement";
 
 export const NodeElement = ({
+  id,
   label,
   status,
   ip,
   load,
-  selected,
   icon: Icon,
 }: NetworkNodeProps) => {
-  const { elementStatusColor, iconColor } = getNetworkNodeStyles(status);
+  const { elementStatusColor, iconColor, selected } = useNodeElement(
+    id,
+    status,
+  );
 
   return (
     <div

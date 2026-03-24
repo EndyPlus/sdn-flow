@@ -35,14 +35,21 @@ export const Header = () => {
             />
           )}
 
-          {stats.offline > 0 && (
-            <StatusBadge icon={XCircle} label="Offline" count={stats.offline} />
-          )}
           {stats.warning > 0 && (
             <StatusBadge
               icon={AlertTriangle}
               label="Warning"
+              status="warning"
               count={stats.warning}
+            />
+          )}
+
+          {stats.offline > 0 && (
+            <StatusBadge
+              icon={XCircle}
+              label="Offline"
+              status="offline"
+              count={stats.offline}
             />
           )}
         </div>

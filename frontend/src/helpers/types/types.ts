@@ -35,6 +35,7 @@ interface BaseCardProps {
 }
 
 export interface NetworkNodeProps extends BaseCardProps {
+  id: string;
   status: Status;
   ip?: string;
   load?: number;
@@ -48,4 +49,5 @@ export interface StatsCardProps extends BaseCardProps {
 
 export interface StatusBadgeProps extends BaseCardProps {
   count: number;
+  status: Status;
 }
