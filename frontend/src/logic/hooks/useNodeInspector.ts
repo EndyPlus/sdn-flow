@@ -1,4 +1,4 @@
-import { Cpu, Network, Server } from "lucide-react";
+import { Cpu, Network, Server, Loader } from "lucide-react";
 import { getNetworkNodeStyles } from "../../helpers/utils/getNetworkNodeStyles";
 import type { Node } from "@xyflow/react";
 import type { NetworkNodeData } from "../../helpers/types/types";
@@ -24,9 +24,11 @@ export const useNodeInspector = (selectedNode: Node<NetworkNodeData>) => {
     server: Server,
     switch: Network,
     industrial: Cpu,
+    rebooting: Loader,
   };
 
-  const Icon = nodeTypeIcons[nodeType as keyof typeof nodeTypeIcons] || Cpu;
+  const baseIcon = nodeTypeIcons[nodeType as keyof typeof nodeTypeIcons] || Cpu;
+  const Icon = nodeDataStatus === "rebooting" ? Loader : baseIcon;
 
   const { inspectorStatusColor } = getNetworkNodeStyles(nodeDataStatus);
 

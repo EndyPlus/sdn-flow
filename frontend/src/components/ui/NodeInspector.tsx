@@ -34,9 +34,17 @@ export const NodeInspector = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {nodeDataStatus !== "online" && nodeDataStatus !== "rebooting" && (
+            <button className="mb-6 w-full animate-pulse cursor-pointer rounded-lg border-2 border-yellow-500 bg-slate-800 px-6 py-4 text-xl font-bold tracking-wider text-white uppercase">
+              Reboot
+            </button>
+          )}
+
           <div className="mb-6 flex items-center gap-4 rounded-lg bg-slate-800 p-4">
             <div className={`rounded-lg p-3 ${inspectorStatusColor}`}>
-              <Icon className="h-8 w-8" />
+              <Icon
+                className={`h-8 w-8 ${nodeDataStatus === "rebooting" ? "animate-spin" : ""}`}
+              />
             </div>
             <div>
               <h3 className="text-xl font-bold text-white">{nodeDataLabel}</h3>
@@ -49,11 +57,13 @@ export const NodeInspector = ({
               <div className="mb-2 flex items-center gap-2">
                 <div
                   className={`h-3 w-3 rounded-full ${
-                    nodeDataStatus === "online"
-                      ? "animate-pulse bg-green-500"
-                      : nodeDataStatus === "offline"
-                        ? "bg-red-500"
-                        : "animate-pulse bg-yellow-500"
+                    nodeDataStatus === "rebooting"
+                      ? "animate-pulse bg-blue-500"
+                      : nodeDataStatus === "online"
+                        ? "animate-pulse bg-green-500"
+                        : nodeDataStatus === "offline"
+                          ? "bg-red-500"
+                          : "animate-pulse bg-yellow-500"
                   }`}
                 />
                 <span className="text-sm font-medium text-slate-400">
@@ -62,11 +72,13 @@ export const NodeInspector = ({
               </div>
               <p
                 className={`text-lg font-bold capitalize ${
-                  nodeDataStatus === "online"
-                    ? "text-green-400"
-                    : nodeDataStatus === "offline"
-                      ? "text-red-400"
-                      : "text-yellow-400"
+                  nodeDataStatus === "rebooting"
+                    ? "text-blue-400"
+                    : nodeDataStatus === "online"
+                      ? "text-green-400"
+                      : nodeDataStatus === "offline"
+                        ? "text-red-400"
+                        : "text-yellow-400"
                 }`}
               >
                 {nodeDataStatus}
@@ -96,60 +108,64 @@ export const NodeInspector = ({
               </div>
             )}
 
-            {nodeDataLoad !== undefined && (
-              <div className="rounded-lg bg-slate-800 p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-400">
-                    CPU Load
-                  </span>
-                </div>
-                <div className="flex items-end gap-2">
-                  <p className="text-2xl font-bold text-white">
-                    {nodeDataLoad}%
-                  </p>
-                  <div className="mb-1 h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
-                    <div
-                      className={`h-full transition-all ${
-                        nodeDataLoad > 80
-                          ? "bg-red-500"
-                          : nodeDataLoad > 60
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                      }`}
-                      style={{ width: `${nodeDataLoad}%` }}
-                    />
+            {nodeDataStatus !== "rebooting" && (
+              <>
+                {nodeDataLoad !== undefined && (
+                  <div className="rounded-lg bg-slate-800 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">
+                        CPU Load
+                      </span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <p className="text-2xl font-bold text-white">
+                        {nodeDataLoad}%
+                      </p>
+                      <div className="mb-1 h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
+                        <div
+                          className={`h-full transition-all ${
+                            nodeDataLoad > 80
+                              ? "bg-red-500"
+                              : nodeDataLoad > 60
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                          }`}
+                          style={{ width: `${nodeDataLoad}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {nodeDataLatency !== undefined && (
-              <div className="rounded-lg bg-slate-800 p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-400">
-                    Latency
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-white">
-                  {nodeDataLatency} ms
-                </p>
-              </div>
-            )}
+                {nodeDataLatency !== undefined && (
+                  <div className="rounded-lg bg-slate-800 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">
+                        Latency
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-white">
+                      {nodeDataLatency} ms
+                    </p>
+                  </div>
+                )}
 
-            {nodeDataUptime !== undefined && (
-              <div className="rounded-lg bg-slate-800 p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-400">
-                    Uptime
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-white">
-                  {nodeDataUptime} hours
-                </p>
-              </div>
+                {nodeDataUptime !== undefined && (
+                  <div className="rounded-lg bg-slate-800 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">
+                        Uptime
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-white">
+                      {nodeDataUptime} hours
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="rounded-lg bg-slate-800 p-4">

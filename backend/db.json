@@ -1,0 +1,33 @@
+{
+  "topology": {
+    "nodes": [
+      { "id": "core-1", "type": "server", "position": { "x": 600, "y": 0 }, "data": { "label": "Main SDN Controller", "status": "online", "ip": "10.0.0.1", "load": 15, "latency": 2, "uptime": 1200 } },
+      
+      { "id": "sw-1", "type": "switch", "position": { "x": 200, "y": 300 }, "data": { "label": "Switch - Workshop 1", "status": "online", "ip": "10.0.1.1", "load": 30, "latency": 5, "uptime": 800 } },
+      { "id": "sw-2", "type": "switch", "position": { "x": 1000, "y": 300 }, "data": { "label": "Switch - Workshop 2", "status": "online", "ip": "10.0.2.1", "load": 25, "latency": 4, "uptime": 850 } },
+
+      { "id": "cnc-1", "type": "industrial", "position": { "x": -200, "y": 600 }, "data": { "label": "CNC Machine 01", "status": "online", "ip": "10.0.1.10", "load": 75, "latency": 12, "uptime": 200 } },
+      { "id": "cnc-2", "type": "industrial", "position": { "x": 100, "y": 600 }, "data": { "label": "CNC Machine 02", "status": "warning", "ip": "10.0.1.11", "load": 92, "latency": 45, "uptime": 195 } },
+      { "id": "cnc-3", "type": "industrial", "position": { "x": 400, "y": 600 }, "data": { "label": "CNC Machine 03", "status": "online", "ip": "10.0.1.12", "load": 40, "latency": 10, "uptime": 200 } },
+
+      { "id": "cnc-4", "type": "industrial", "position": { "x": 800, "y": 600 }, "data": { "label": "CNC Machine 04", "status": "online", "ip": "10.0.2.10", "load": 55, "latency": 8, "uptime": 150 } },
+      { "id": "cnc-5", "type": "industrial", "position": { "x": 1100, "y": 600 }, "data": { "label": "CNC Machine 05", "status": "offline", "ip": "10.0.2.11", "load": 0, "latency": 0, "uptime": 0 } },
+      { "id": "pc-1", "type": "industrial", "position": { "x": 1400, "y": 600 }, "data": { "label": "Engineer PC 01", "status": "rebooting", "ip": "10.0.2.50", "load": 20, "latency": 5, "uptime": 48 } }
+    ],
+    "edges": [
+      { "id": "e-c1-s1", "source": "core-1", "target": "sw-1", "animated": true },
+      { "id": "e-c1-s2", "source": "core-1", "target": "sw-2", "animated": true },
+      { "id": "e-s1-c1", "source": "sw-1", "target": "cnc-1" },
+      { "id": "e-s1-c2", "source": "sw-1", "target": "cnc-2" },
+      { "id": "e-s1-c3", "source": "sw-1", "target": "cnc-3" },
+      { "id": "e-s2-c4", "source": "sw-2", "target": "cnc-4" },
+      { "id": "e-s2-c5", "source": "sw-2", "target": "cnc-5" },
+      { "id": "e-s2-p1", "source": "sw-2", "target": "pc-1" }
+    ],
+    "hierarchy": {
+      "core-1": ["sw-1", "sw-2"],
+      "sw-1": ["cnc-1", "cnc-2", "cnc-3"],
+      "sw-2": ["cnc-4", "cnc-5", "pc-1"]
+    }
+  }
+}

@@ -9,9 +9,10 @@ export const useNetworkStats = () => {
     const online = nodes.filter((n) => n.data.status === "online").length;
     const offline = nodes.filter((n) => n.data.status === "offline").length;
     const warning = nodes.filter((n) => n.data.status === "warning").length;
+    const rebooting = nodes.filter((n) => n.data.status === "rebooting").length;
     const issues = offline + warning;
 
-    return { total, online, offline, warning, issues };
+    return { total, online, offline, warning, issues, rebooting };
   }, [nodes]);
 
   return stats;

@@ -1,10 +1,17 @@
-import { Activity, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Loader,
+} from "lucide-react";
 import { StatsCard } from "../ui/StatsCard";
 import { StatusBadge } from "../ui/StatusBadge";
-import { useNetworkStats } from "../../logic/hooks/useNetworkStats";
+import { useHeaderInfo } from "../../logic/hooks/useHeaderInfo";
+import { getFormattedTime } from "../../helpers/utils/getFormattedTime";
 
 export const Header = () => {
-  const stats = useNetworkStats();
+  const { stats, lastUpdated } = useHeaderInfo();
 
   return (
     <header className="border-b border-slate-800 bg-slate-900 px-6 py-4 shadow-lg">
@@ -13,7 +20,18 @@ export const Header = () => {
           <Activity className="h-8 w-8 text-blue-500" />
           <div>
             <h1 className="text-xl font-bold text-white">SDN-Flow Monitor</h1>
-            <p className="text-sm text-slate-400">AdvisMash Industrial Plant</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-slate-400">
+                AdvisMash Industrial Plant
+              </p>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                <p className="text-xs text-slate-500">
+                  Last Updated: {getFormattedTime(lastUpdated)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -25,6 +43,15 @@ export const Header = () => {
             value={stats.online}
             variant="success"
           />
+
+          {stats.rebooting > 0 && (
+            <StatsCard
+              icon={Loader}
+              label="Rebooting"
+              value={stats.rebooting}
+              variant="info"
+            />
+          )}
 
           {stats.issues > 0 && (
             <StatsCard

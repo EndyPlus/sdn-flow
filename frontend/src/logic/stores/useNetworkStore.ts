@@ -5,6 +5,8 @@ export const useNetworkStore = create<NetworkState>((set) => ({
   nodes: [],
   edges: [],
   selectedNode: null,
+  lastUpdated: null,
   setSelectedNode: (node) => set({ selectedNode: node }),
-  updateNodesAndEdges: (nodes, edges) => set({ nodes, edges }),
+  updateNodesAndEdges: (nodes, edges) =>
+    set({ nodes, edges, lastUpdated: new Date() }),
 }));

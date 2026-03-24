@@ -1,8 +1,8 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
 
-export type Status = "online" | "offline" | "warning";
-export type Variant = "default" | "success" | "danger";
+export type Status = "online" | "offline" | "warning" | "rebooting";
+export type Variant = "default" | "success" | "danger" | "info";
 
 export interface NetworkNodeData extends Record<string, unknown> {
   label: string;
@@ -20,6 +20,7 @@ export interface NodesEdges {
 
 export interface NetworkState extends NodesEdges {
   selectedNode: Node<NetworkNodeData> | null;
+  lastUpdated: Date | null;
   setSelectedNode: (node: Node<NetworkNodeData> | null) => void;
   updateNodesAndEdges: (nodes: Node<NetworkNodeData>[], edges: Edge[]) => void;
 }

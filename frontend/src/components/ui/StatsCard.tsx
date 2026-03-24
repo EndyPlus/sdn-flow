@@ -14,7 +14,9 @@ export const StatsCard = ({
     <div
       className={`flex items-center gap-2 rounded-lg px-4 py-2 ${variantColor}`}
     >
-      <Icon className={`h-5 w-5 ${iconColor}`} />
+      <Icon
+        className={`h-5 w-5 ${iconColor} ${variant === "info" ? "animate-spin" : ""}`}
+      />
       <span className={`text-sm font-medium ${labelColor}`}>{label}:</span>
       <span className={`text-lg font-bold ${textColor}`}>{value}</span>
     </div>
