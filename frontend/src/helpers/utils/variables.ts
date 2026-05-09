@@ -1,1 +1,1 @@
-export const FETCHING_INTERVAL = 5000;
+export const FETCHING_INTERVAL = 10000;

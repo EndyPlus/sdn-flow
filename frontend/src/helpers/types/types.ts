@@ -1,6 +1,14 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
 
+export interface StatusNode {
+  id: string;
+  status: "online" | "offline" | "warning";
+  uptime: number;
+  load: number | null;
+  latency: number | null;
+}
+
 export type Status = "online" | "offline" | "warning";
 export type Variant = "default" | "success" | "danger";
 
@@ -22,6 +30,7 @@ export interface NetworkState extends NodesEdges {
   selectedNode: Node<NetworkNodeData> | null;
   setSelectedNode: (node: Node<NetworkNodeData> | null) => void;
   updateNodesAndEdges: (nodes: Node<NetworkNodeData>[], edges: Edge[]) => void;
+  updateNodeStatuses: (statusNodes: StatusNode[]) => void;
 }
 
 export interface NodeInspectorProps {

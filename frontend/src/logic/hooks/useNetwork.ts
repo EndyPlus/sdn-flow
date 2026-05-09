@@ -52,6 +52,10 @@ export const useNetwork = () => {
     () => ({
       style: { stroke: "#64748b", strokeWidth: 2 },
       type: "smoothstep",
+      pathOptions: {
+        borderRadius: 10,
+        offset: 20,
+      },
     }),
     [],
   );

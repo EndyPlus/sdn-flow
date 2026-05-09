@@ -2,15 +2,16 @@
   "name": "sdn-flow-backend",
   "version": "1.0.0",
   "description": "Backend",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "node --watch index.js",
-    "start": "node index.js"
+    "dev": "node --watch server.js",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "Artem Pliusnin",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.6.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"
   }
