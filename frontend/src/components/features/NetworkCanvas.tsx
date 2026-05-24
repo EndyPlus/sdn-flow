@@ -31,7 +31,7 @@ export const NetworkCanvas = () => {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         fitViewOptions={{ padding: 0.3 }}
-        minZoom={0.5}
+        minZoom={0.3}
         maxZoom={1}
       >
         <Background color="#334155" gap={16} size={1} />

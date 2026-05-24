@@ -27,23 +27,28 @@ let tokenCache = {
 };
 
 /**
- * Get authentication token from Cisco DNA Center
- * Implements caching - only fetches new token if missing or expired
+ * Get valid authentication token from Cisco DNA Center
+ * Implements 55-minute caching for stable auth
+ * @returns {Promise<string>} Valid auth token
  */
-async function getAuthToken() {
+async function getValidToken() {
   const now = Date.now();
+  const FIFTY_FIVE_MINUTES = 55 * 60 * 1000; // 55 minutes in ms
 
-  // Return cached token if still valid (with 5 minute buffer)
-  if (tokenCache.token && tokenCache.expiresAt && now < tokenCache.expiresAt - 5 * 60 * 1000) {
+  // Return cached token if still valid (55 minute cache)
+  if (tokenCache.token && tokenCache.expiresAt && now < tokenCache.expiresAt) {
+    console.log("[AUTH] Using cached token (valid)");
     return tokenCache.token;
   }
+
+  console.log("[AUTH] Fetching new token from Cisco...");
 
   try {
     const response = await axios.post(
       `${CISCO_BASE_URL}${CISCO_AUTH_ENDPOINT}`,
       {},
       {
-        httpsAgent,
+        httpsAgent,  // SSL bypass for self-signed cert
         auth: {
           username: CISCO_USERNAME,
           password: CISCO_PASSWORD,
@@ -51,48 +56,63 @@ async function getAuthToken() {
         headers: {
           "Content-Type": "application/json",
         },
+        timeout: 10000,
       }
     );
 
-    const token = response.data.Token;
-    // Token is valid for 1 hour
+    const token = response.data?.Token;
+    if (!token) {
+      throw new Error("No Token in response");
+    }
+
+    // Cache for 55 minutes (Cisco tokens are valid for 60 minutes)
     tokenCache = {
       token,
-      expiresAt: now + 60 * 60 * 1000,
+      expiresAt: now + FIFTY_FIVE_MINUTES,
     };
 
+    console.log("[AUTH] New token cached for 55 minutes");
     return token;
   } catch (error) {
-    console.error("Failed to get auth token:", error.message);
+    console.error("[AUTH] Failed to get token:", error.message);
+    if (error.response) {
+      console.error("[AUTH] Response status:", error.response.status);
+    }
     throw new Error("Authentication failed");
   }
 }
 
 /**
  * Make authenticated request to Cisco API
+ * Uses getValidToken for 55-minute cached auth
  * Automatically retries with new token on 401
  */
 async function makeCiscoRequest(endpoint, retryCount = 0) {
-  const token = await getAuthToken();
+  const token = await getValidToken();
 
   try {
     const response = await axios.get(`${CISCO_BASE_URL}${endpoint}`, {
-      httpsAgent,
+      httpsAgent,  // SSL bypass for self-signed cert
       headers: {
         "X-Auth-Token": token,
         "Content-Type": "application/json",
       },
+      timeout: 15000,
     });
 
     return response.data;
   } catch (error) {
     // If 401 Unauthorized, clear token cache and retry once
     if (error.response?.status === 401 && retryCount === 0) {
+      console.log(`[API] 401 received, clearing token cache and retrying...`);
       tokenCache = { token: null, expiresAt: null };
       return makeCiscoRequest(endpoint, retryCount + 1);
     }
 
-    console.error(`Cisco API request failed for ${endpoint}:`, error.message);
+    console.error(`[API] Cisco API request failed for ${endpoint}:`, error.message);
+    if (error.response) {
+      console.error(`[API] Status: ${error.response.status}`);
+    }
     throw error;
   }
 }
@@ -107,15 +127,20 @@ async function makeCiscoRequest(endpoint, retryCount = 0) {
  */
 function getDeviceLevel(device) {
   // Virtual industrial nodes are Level 2 (bottom row)
-  if (device.isVirtual || device.virtualType === "industrial") {
+  if (device.isVirtual && device.virtualType === "industrial") {
     return 2;
+  }
+
+  // SDN Controller is Level 0 (top, above CORE)
+  if (device.isVirtual && device.virtualType === "controller") {
+    return 0;
   }
 
   const role = (device.role || "").toUpperCase();
   const family = (device.family || "").toLowerCase();
 
-  // Level 0 (Top): CORE role or Distribution
-  if (role === "CORE" || role === "DISTRIBUTION") {
+  // Level 0 (Top): CORE role, Distribution, or Controller
+  if (role === "CORE" || role === "DISTRIBUTION" || role === "CONTROLLER") {
     return 0;
   }
 
@@ -130,19 +155,24 @@ function getDeviceLevel(device) {
 }
 
 /**
- * Generate hierarchical positions for nodes with logical sorting
- * Row 0: y = 0, Row 1: y = 400, Row 2: y = 800
- * x = (index - (nodesInRow.length - 1) / 2) * 350
- * Sorts nodes alphabetically within each level to ensure straight lines
+ * Generate hierarchical positions for nodes with TIGHT layout (NO COLLISION)
+ * Controller: y = 0 (top center, x=0)
+ * Level 1 (Switches): y = 200, with 1200px spacing
+ * Level 2 (CNC): y = 400, with 350px spacing between CNCs
  * @param {Array} devices - Array of device objects
+ * @param {Map} switchAssignments - Map of CNC id -> assigned switch id
  * @returns {Map} Map of device ID to position {x, y}
  */
-function generateHierarchicalPositions(devices) {
+function generateHierarchicalPositions(devices, switchAssignments = new Map()) {
   if (!Array.isArray(devices)) return new Map();
 
-  // Group devices by level
+  // Separate controller from other devices
+  const controller = devices.find(d => d.isVirtual && d.virtualType === "controller");
+  const otherDevices = devices.filter(d => !(d.isVirtual && d.virtualType === "controller"));
+
+  // Group non-controller devices by level
   const levelGroups = new Map();
-  for (const device of devices) {
+  for (const device of otherDevices) {
     const level = getDeviceLevel(device);
     if (!levelGroups.has(level)) {
       levelGroups.set(level, []);
@@ -151,30 +181,75 @@ function generateHierarchicalPositions(devices) {
   }
 
   const positions = new Map();
-  const rowHeight = 400; // y = 0, 400, 800
-  const spacingX = 350; // 350px horizontal gap
 
-  // Process each level: sort alphabetically, then assign positions
-  for (const [level, levelDevices] of levelGroups) {
-    const y = level * rowHeight;
+  // Controller at absolute center (x=0, y=0)
+  if (controller) {
+    positions.set(controller.id, { x: 0, y: 0 });
+  }
 
-    // Sort by hostname/label alphabetically for logical alignment
-    const sortedDevices = levelDevices.sort((a, b) => {
-      const nameA = (a.hostname || a.label || a.id || "").toString().toLowerCase();
-      const nameB = (b.hostname || b.label || b.id || "").toString().toLowerCase();
+  // Vertical positions - TIGHT but safe spacing
+  const Y_SWITCH = 200;  // Level 1
+  const Y_CNC = 400;     // Level 2
+  const SPACING_SWITCH = 1200; // Switch-to-switch gap (1200px - prevents inter-group collision)
+  const SPACING_CNC = 350;     // CNC-to-CNC gap (350px - tight but no touch)
+
+  // Level 0 (Core/Distribution) at y=0 (same level as controller, side by side)
+  if (levelGroups.has(0)) {
+    const level0Devices = levelGroups.get(0).filter(d => !(d.isVirtual && d.virtualType === "controller"));
+    if (level0Devices.length > 0) {
+      const sorted = level0Devices.sort((a, b) => {
+        const nameA = (a.hostname || a.id || "").toString().toLowerCase();
+        const nameB = (b.hostname || b.id || "").toString().toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      const rowLength = sorted.length;
+      sorted.forEach((device, index) => {
+        const x = (index - (rowLength - 1) / 2) * SPACING_SWITCH;
+        positions.set(device.id, { x, y: 0 });
+      });
+    }
+  }
+
+  // Level 1 (Switches) at y=200 with 400px spacing
+  let switchPositions = new Map();
+  if (levelGroups.has(1)) {
+    const level1Devices = levelGroups.get(1).sort((a, b) => {
+      const nameA = (a.hostname || a.id || "").toString().toLowerCase();
+      const nameB = (b.hostname || b.id || "").toString().toLowerCase();
       return nameA.localeCompare(nameB);
     });
-
-    const rowLength = sortedDevices.length;
-
-    sortedDevices.forEach((device, index) => {
-      // Formula: x = (index - (rowLength - 1) / 2) * 350
-      // This centers the row at x=0
-      const x = (index - (rowLength - 1) / 2) * spacingX;
-      positions.set(device.id, { x, y });
+    const rowLength = level1Devices.length;
+    level1Devices.forEach((device, index) => {
+      const x = (index - (rowLength - 1) / 2) * SPACING_SWITCH;
+      positions.set(device.id, { x, y: Y_SWITCH });
+      switchPositions.set(device.id, x);
     });
+  }
 
-    console.log(`[LAYOUT] Level ${level}: ${rowLength} nodes, y=${y}, x-range: ${(0 - (rowLength - 1) / 2) * spacingX} to ${(rowLength - 1 - (rowLength - 1) / 2) * spacingX}`);
+  // Level 2 (CNC Machines) at y=400, grouped under switches with 280px gap
+  if (levelGroups.has(2)) {
+    const level2Devices = levelGroups.get(2);
+
+    // Group CNCs by their assigned switch
+    const cncsBySwitch = new Map();
+    for (const cnc of level2Devices) {
+      const assignedSwitchId = switchAssignments.get(cnc.id);
+      if (!cncsBySwitch.has(assignedSwitchId)) {
+        cncsBySwitch.set(assignedSwitchId, []);
+      }
+      cncsBySwitch.get(assignedSwitchId).push(cnc);
+    }
+
+    // Position CNCs centered under each switch with 350px spacing
+    for (const [switchId, cncs] of cncsBySwitch) {
+      const switchX = switchPositions.get(switchId) || 0;
+      const cncCount = cncs.length;
+      cncs.forEach((cnc, index) => {
+        // 350px gap between CNCs - tight but no collision
+        const groupOffset = (index - (cncCount - 1) / 2) * SPACING_CNC;
+        positions.set(cnc.id, { x: switchX + groupOffset, y: Y_CNC });
+      });
+    }
   }
 
   return positions;
@@ -207,30 +282,46 @@ function generateVirtualIndustrialNodes(count, startIndex) {
 
 /**
  * Map Cisco devices to React Flow nodes with hierarchical positioning
+ * @param {Array} devices - Device objects
+ * @param {Map} positions - Pre-calculated positions (optional)
+ * @returns {Array} React Flow nodes
  */
-function mapDevicesToNodes(devices) {
+function mapDevicesToNodes(devices, positions = null) {
   if (!Array.isArray(devices)) return [];
 
-  // Generate positions based on hierarchy
-  const positions = generateHierarchicalPositions(devices);
+  // Use provided positions or generate new ones
+  const devicePositions = positions || generateHierarchicalPositions(devices);
 
   return devices.map((device) => {
-    const position = positions.get(device.id) || { x: 0, y: 0 };
-    const isVirtual = device.isVirtual || device.virtualType === "industrial";
+    const position = devicePositions.get(device.id) || { x: 0, y: 0 };
+    const isVirtual = device.isVirtual || false;
+    const virtualType = device.virtualType || null;
+
+    // Determine node type: controller -> server, industrial -> industrial, real devices -> switch
+    let nodeType = "switch";
+    if (isVirtual && virtualType === "controller") {
+      nodeType = "server";
+    } else if (isVirtual && virtualType === "industrial") {
+      nodeType = "industrial";
+    }
+
+    // Determine status
+    let status = "offline";
+    if (isVirtual && virtualType === "industrial") {
+      status = device.reachabilityStatus === "Unreachable" ? "offline" : "warning";
+    } else if (isVirtual && virtualType === "controller") {
+      status = "online"; // Controller is always online
+    } else {
+      status = device.reachabilityStatus === "Reachable" ? "online" : "offline";
+    }
 
     return {
       id: device.id,
-      type: isVirtual ? "industrial" : "switch",
+      type: nodeType,
       position: position,
       data: {
         label: device.hostname || "Unknown",
-        status: isVirtual
-          ? device.reachabilityStatus === "Unreachable"
-            ? "offline"
-            : "warning"
-          : device.reachabilityStatus === "Reachable"
-            ? "online"
-            : "offline",
+        status: status,
         ip: device.managementIpAddress || "",
       },
     };
@@ -305,16 +396,29 @@ function mapLinksToEdges(links, devices) {
     }
     seenPairs.add(pairKey);
 
-    // Determine if this is a Core-to-Switch connection (animated)
-    const isCoreConnection = sourceInfo.level === 0 || targetInfo.level === 0;
+    // Determine edge color based on connection type
+    // Controller->Switch: Cyan #00e5ff, Switch->Industrial: Green #22c55e
+    let edgeColor = "#22c55e"; // Default Green for switch->CNC
+    let isAnimated = false;
+
+    if (sourceInfo.isVirtual || targetInfo.isVirtual) {
+      // Connection involving virtual nodes at level 0 (controller)
+      if (sourceInfo.level === 0 || targetInfo.level === 0) {
+        edgeColor = "#00e5ff"; // Cyan for controller connections
+        isAnimated = true;
+      }
+    }
 
     edges.push({
       id: link.id || `edge-${sourceId}-${targetId}`,
       source: sourceId,
       target: targetId,
       type: "smoothstep",
-      animated: isCoreConnection,
-      style: { strokeWidth: 2 },
+      animated: isAnimated,
+      style: {
+        strokeWidth: 2,
+        stroke: edgeColor,
+      },
       pathOptions: {
         borderRadius: 10,
         offset: 20,
@@ -343,10 +447,10 @@ function mapLinksToEdges(links, devices) {
  * CNC machines are DISTRIBUTED EVENLY across available switches
  * @param {Array} devices - All devices including virtual ones
  * @param {Array} existingEdges - Already created edges from topology
- * @returns {Array} Additional edges for virtual industrial nodes
+ * @returns {Object} { edges: Array, switchAssignments: Map } - edges and CNC->switch mapping
  */
 function generateVirtualEdges(devices, existingEdges) {
-  if (!Array.isArray(devices)) return [];
+  if (!Array.isArray(devices)) return { edges: [], switchAssignments: new Map() };
 
   // Find Level 1 switches (real Cisco switches, not virtual)
   const level1Switches = devices.filter(
@@ -355,7 +459,7 @@ function generateVirtualEdges(devices, existingEdges) {
 
   if (level1Switches.length === 0) {
     console.warn("[VIRTUAL EDGES] No Level 1 switches found for virtual edge creation");
-    return [];
+    return { edges: [], switchAssignments: new Map() };
   }
 
   // Sort switches by hostname for consistent ordering
@@ -372,7 +476,7 @@ function generateVirtualEdges(devices, existingEdges) {
 
   if (virtualIndustrial.length === 0) {
     console.log("[VIRTUAL EDGES] No virtual industrial nodes found");
-    return [];
+    return { edges: [], switchAssignments: new Map() };
   }
 
   // Sort CNC machines by ID for consistent ordering
@@ -385,6 +489,7 @@ function generateVirtualEdges(devices, existingEdges) {
   console.log(`[VIRTUAL EDGES] Distributing ${sortedCNCs.length} CNC machines across ${sortedSwitches.length} switches`);
 
   const virtualEdges = [];
+  const switchAssignments = new Map(); // CNC id -> switch id
   const existingEdgePairs = new Set();
 
   // Build set of existing edge pairs to avoid duplicates
@@ -402,28 +507,57 @@ function generateVirtualEdges(devices, existingEdges) {
     const switchIndex = Math.floor(cncIndex / cncsPerSwitch) % sortedSwitches.length;
     const sourceSwitch = sortedSwitches[switchIndex];
 
+    // Store assignment for positioning
+    switchAssignments.set(cncNode.id, sourceSwitch.id);
+
     const pairKey = `${sourceSwitch.id}-${cncNode.id}`;
     const reverseKey = `${cncNode.id}-${sourceSwitch.id}`;
 
     if (!existingEdgePairs.has(pairKey) && !existingEdgePairs.has(reverseKey)) {
+      // Determine edge color based on CNC status
+      // Green (#22c55e) for normal, Amber (#f59e0b) for warning, Red (#ef4444) for offline
+      const isOffline = cncNode.reachabilityStatus === "Unreachable" ||
+                        cncNode.reachabilityStatus === "offline";
+      const isWarning = !isOffline && (cncNode.reachabilityStatus === "Partial" ||
+                        cncNode.reachabilityStatus === "warning");
+
+      let edgeColor = "#22c55e"; // Green (normal)
+      let edgeLabel = null;
+      let isAnimated = false;
+
+      if (isOffline) {
+        edgeColor = "#ef4444"; // Red (offline)
+        edgeLabel = "● OFFLINE";
+      } else if (isWarning) {
+        edgeColor = "#f59e0b"; // Amber (warning)
+        edgeLabel = "⚠ WARNING";
+        isAnimated = true;
+      }
+
       virtualEdges.push({
         id: `e-manual-${sourceSwitch.id}-${cncNode.id}`,
-        source: sourceSwitch.id,  // Switch is the source (top)
-        target: cncNode.id,       // CNC is the target (bottom)
+        source: sourceSwitch.id,
+        target: cncNode.id,
         type: "smoothstep",
-        animated: false,
-        style: { strokeWidth: 2 },
+        animated: isAnimated,
+        label: edgeLabel,
+        labelStyle: { fill: edgeColor, fontWeight: "bold", fontSize: 10 },
+        labelBgStyle: { fill: "#1e293b", rx: 4 },
+        style: {
+          strokeWidth: 2,
+          stroke: edgeColor,
+        },
         pathOptions: {
           borderRadius: 10,
           offset: 20,
         },
       });
-      console.log(`  CNC ${cncIndex + 1}/${sortedCNCs.length} (${cncNode.id}) -> Switch ${switchIndex + 1} (${sourceSwitch.hostname || sourceSwitch.id})`);
+      console.log(`  CNC ${cncIndex + 1}/${sortedCNCs.length} (${cncNode.id}) -> Switch ${switchIndex + 1} [${isOffline ? "OFFLINE" : isWarning ? "WARNING" : "OK"}]`);
     }
   });
 
   console.log(`[VIRTUAL EDGES] Created ${virtualEdges.length} virtual edges total`);
-  return virtualEdges;
+  return { edges: virtualEdges, switchAssignments };
 }
 
 /**
@@ -433,8 +567,22 @@ function mapDevicesToStatus(devices) {
   if (!Array.isArray(devices)) return [];
 
   return devices.map((device) => {
+    const isVirtual = device.isVirtual || false;
+    const virtualType = device.virtualType || null;
+
+    // Handle SDN Controller
+    if (isVirtual && virtualType === "controller") {
+      return {
+        id: device.id,
+        status: "online",
+        uptime: device.uptime || 30 * 24 * 60 * 60,
+        load: 25,
+        latency: 5,
+      };
+    }
+
     // Handle virtual industrial nodes
-    if (device.isVirtual) {
+    if (isVirtual && virtualType === "industrial") {
       return {
         id: device.id,
         status: device.reachabilityStatus === "Unreachable" ? "offline" : "warning",
@@ -462,15 +610,37 @@ function mapDevicesToStatus(devices) {
  */
 app.get("/api/topology", async (req, res) => {
   try {
+    console.log("\n=== TOPOLOGY REQUEST ===");
+    console.log(`[${new Date().toISOString()}] Fetching from Cisco...`);
+
     // Fetch devices and topology in parallel
     const [devicesData, topologyData] = await Promise.all([
       makeCiscoRequest(CISCO_DEVICES_ENDPOINT),
       makeCiscoRequest(CISCO_TOPOLOGY_ENDPOINT),
     ]);
 
+    console.log(`[SUCCESS] Got devices and topology from Cisco`);
+
     let devices = devicesData.response || [];
     const topology = topologyData.response || {};
     const links = topology.links || [];
+
+    console.log(`[DATA] ${devices.length} devices, ${links.length} links from Cisco`);
+
+    // Inject SDN Controller Node at the top of the hierarchy
+    const controllerNode = {
+      id: "sdn-controller-core",
+      hostname: "SDN Controller (Catalyst Center)",
+      managementIpAddress: "10.10.10.1",
+      reachabilityStatus: "Reachable",
+      role: "CONTROLLER",
+      family: "Controller",
+      isVirtual: true,
+      virtualType: "controller",
+      uptime: 30 * 24 * 60 * 60,
+    };
+    devices.unshift(controllerNode);
+    console.log(`[CONTROLLER] Added SDN Controller node at top of hierarchy`);
 
     // Hybrid Mode: Add virtual industrial nodes if fewer than 15 devices
     const MIN_DEVICE_COUNT = 15;
@@ -480,16 +650,42 @@ app.get("/api/topology", async (req, res) => {
       devices = [...devices, ...virtualNodes];
     }
 
-    const nodes = mapDevicesToNodes(devices);
+    // Generate virtual edges and get switch assignments for positioning
+    const { edges: virtualEdges, switchAssignments } = generateVirtualEdges(devices, []);
 
-    // Map topology links to edges with device validation
+    // Now generate positions with switch assignments for CNC grouping
+    const positions = generateHierarchicalPositions(devices, switchAssignments);
+
+    // Map devices to nodes with the calculated positions
+    const nodes = mapDevicesToNodes(devices, positions);
+
+    // Map topology links to edges with neon green styling
     const topologyEdges = mapLinksToEdges(links, devices);
 
-    // Generate virtual edges connecting industrial nodes to switches
-    const virtualEdges = generateVirtualEdges(devices, topologyEdges);
+    // Add SDN Controller edges - connect to Level 1 switches (CAT-SRE nodes)
+    // CYAN (#00e5ff) for backbone traffic, animated
+    const level1Switches = devices.filter(
+      (d) => !d.isVirtual && getDeviceLevel(d) === 1
+    );
+    const controllerEdges = level1Switches.map((sw) => ({
+      id: `e-ctrl-${sw.id}`,
+      source: "sdn-controller-core",
+      target: sw.id,
+      type: "smoothstep",
+      animated: true,
+      style: {
+        strokeWidth: 2,
+        stroke: "#00e5ff", // Cyan for controller->switch
+      },
+      pathOptions: {
+        borderRadius: 10,
+        offset: 20,
+      },
+    }));
+    console.log(`[CONTROLLER] Connected to ${controllerEdges.length} switches with CYAN backbone edges`);
 
-    // Combine all edges
-    const edges = [...topologyEdges, ...virtualEdges];
+    // Combine all edges: controller edges first, then topology, then virtual
+    const edges = [...controllerEdges, ...topologyEdges, ...virtualEdges];
 
     // Log hierarchy breakdown
     const levelCounts = { 0: 0, 1: 0, 2: 0 };
@@ -499,10 +695,10 @@ app.get("/api/topology", async (req, res) => {
     }
 
     console.log(`[TOPOLOGY] ${nodes.length} nodes, ${edges.length} edges`);
-    console.log(`  Level 0 (Core/Distribution): ${levelCounts[0]} nodes at y=0`);
-    console.log(`  Level 1 (Access/Switches): ${levelCounts[1]} nodes at y=400`);
-    console.log(`  Level 2 (Industrial/PCs): ${levelCounts[2]} nodes at y=800`);
-    console.log(`  Edges breakdown: ${topologyEdges.length} from Cisco, ${virtualEdges.length} virtual`);
+    console.log(`  Level 0 (Controller): ${levelCounts[0]} nodes at y=0 (x=0 center)`);
+    console.log(`  Level 1 (Switches): ${levelCounts[1]} nodes at y=200 (1200px gap)`);
+    console.log(`  Level 2 (CNC): ${levelCounts[2]} nodes at y=400 (350px gap - closer)`);
+    console.log(`  Edge Colors: Cyan (#00e5ff)=Backbone, Green (#22c55e)=Normal, Orange (#f59e0b)=Warning, Red (#ef4444)=Offline`);
 
     // CRITICAL: Log all edges for debugging ID consistency
     console.log(`[TOPOLOGY] All edges (${edges.length}):`);
@@ -520,10 +716,25 @@ app.get("/api/topology", async (req, res) => {
 
     res.json({ nodes, edges });
   } catch (error) {
-    console.error("Error fetching topology:", error.message);
+    console.error("\n=== TOPOLOGY ERROR ===");
+    console.error("Error type:", error.constructor.name);
+    console.error("Error message:", error.message);
+    console.error("Error code:", error.code || "N/A");
+
+    // Detailed error logging for debugging
+    if (error.response) {
+      console.error("Cisco response status:", error.response.status);
+      console.error("Cisco response data:", error.response.data);
+    }
+    if (error.stack) {
+      console.error("Stack trace:", error.stack.split('\n').slice(0, 5).join('\n'));
+    }
+
+    // Return appropriate error response
     res.status(500).json({
       error: "Failed to fetch topology from Cisco DNA Center",
       message: error.message,
+      code: error.code || "UNKNOWN",
     });
   }
 });
@@ -535,8 +746,26 @@ app.get("/api/topology", async (req, res) => {
  */
 app.get("/api/topology/status", async (req, res) => {
   try {
+    console.log("\n=== STATUS REQUEST ===");
+    console.log(`[${new Date().toISOString()}] Fetching status from Cisco...`);
+
     const devicesData = await makeCiscoRequest(CISCO_DEVICES_ENDPOINT);
     let devices = devicesData.response || [];
+    console.log(`[SUCCESS] Got ${devices.length} devices from Cisco`);
+
+    // Add SDN Controller Node for consistency with topology endpoint
+    const controllerNode = {
+      id: "sdn-controller-core",
+      hostname: "SDN Controller (Catalyst Center)",
+      managementIpAddress: "10.10.10.1",
+      reachabilityStatus: "Reachable",
+      role: "CONTROLLER",
+      family: "Controller",
+      isVirtual: true,
+      virtualType: "controller",
+      uptime: 30 * 24 * 60 * 60,
+    };
+    devices.unshift(controllerNode);
 
     // Hybrid Mode: Add same virtual industrial nodes if fewer than 15 devices
     const MIN_DEVICE_COUNT = 15;
@@ -547,13 +776,24 @@ app.get("/api/topology/status", async (req, res) => {
     }
 
     const nodes = mapDevicesToStatus(devices);
+    console.log(`[STATUS] Returning ${nodes.length} status nodes`);
 
     res.json({ nodes });
   } catch (error) {
-    console.error("Error fetching status:", error.message);
+    console.error("\n=== STATUS ERROR ===");
+    console.error("Error type:", error.constructor.name);
+    console.error("Error message:", error.message);
+    console.error("Error code:", error.code || "N/A");
+
+    if (error.response) {
+      console.error("Cisco response status:", error.response.status);
+      console.error("Cisco response data:", error.response.data);
+    }
+
     res.status(500).json({
       error: "Failed to fetch device status from Cisco DNA Center",
       message: error.message,
+      code: error.code || "UNKNOWN",
     });
   }
 });
